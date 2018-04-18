@@ -242,6 +242,7 @@ func (c *Client) GetProject(account, repo string) (*Project, error) {
 	}
 
 	for _, project := range projects {
+		//log.Printf("%#v"folproject)
 		if account == project.Username && repo == project.Reponame {
 			return project, nil
 		}
@@ -535,6 +536,33 @@ func (c *Client) CreateCheckoutKey(account, repo, keyType string) (*CheckoutKey,
 	return checkoutKey, nil
 }
 
+// this is based on an undocumented API call to
+// https://circleci.com/api/v1.1/project/:project-name/settings
+// send the request as JSON and expect 200
+// the body is empty string, valid json, but not great use
+type AWSKeyPairUpdate struct {
+	AWS struct {
+		Keypair AWSKeypair `json:"keypair"`
+	} `json:"aws"`
+}
+
+func (c *Client) SetAWSKeyPair(account, repo string, keypair AWSKeypair) error {
+
+	out := ""
+
+	body := AWSKeyPairUpdate{
+		AWS: struct {
+			Keypair AWSKeypair `json:"keypair"`
+		}{Keypair: keypair},
+	}
+
+	err := c.request("PUT", fmt.Sprintf("project/%s/%s/settings", account, repo), &out, nil, body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetCheckoutKey fetches the checkout key for the given project by fingerprint
 func (c *Client) GetCheckoutKey(account, repo, fingerprint string) (*CheckoutKey, error) {
 	checkoutKey := &CheckoutKey{}
@@ -621,7 +649,7 @@ type AWSConfig struct {
 // SecretAccessKey will be a masked value
 type AWSKeypair struct {
 	AccessKeyID     string `json:"access_key_id"`
-	SecretAccessKey string `json:"secret_access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
 }
 
 // BuildSummary represents the subset of build information returned with a Project
